@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SVM Visualizer</title>
+<style>
+body {
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    background: #f8f9fa;
+    margin: 0;
+    padding: 0;
+}
+header {
+    background: #004085;
+    color: #fff;
+    padding: 20px;
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+}
+.container {
+    max-width: 1100px;
+    margin: 30px auto;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+input[type="number"] {
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: right;
+    width: 70px;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 15px;
+    font-size: 16px;
+}
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+}
+th {
+    background: #e9ecef;
+}
+tr:nth-child(even) {
+    background: #f8f9fa;
+}
+button {
+    background: #004085;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background 0.3s ease;
+}
+button:hover {
+    background: #002752;
+}
+.result {
+    margin-top: 20px;
+    padding: 15px;
+    background: #e9ecef;
+    border-radius: 8px;
+    font-size: 18px;
+}
+.grid-controls {
+    margin-bottom: 20px;
+}
+img {
+    max-width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+.classify-point {
+    margin-top: 20px;
+    padding: 15px;
+    background: #e2e8f0;
+    border-radius: 8px;
+}
+.classify-point input {
+    width: 80px;
+}
+</style>
+</head>
+<body>
+<header>Visualisateur SVM</header>
+<div class="container">
+    <h2>Visualisation SVM : Hyperplan et données</h2>
+    <div class="grid-controls">
+        <label>Choisir la dimension de la table initiale :</label>
+        <input type="number" id="rows" value="5" min="2"> lignes
+        <input type="number" id="cols" value="2" min="2" max="3"> colonnes (X1, X2, [X3])
+        <br><br>
+        <button onclick="generateTable()">Créer table</button>
+    </div>
+    <div id="table-container"></div>
+    <button onclick="calculate()">Calculer</button>
+    <div class="result" id="result"></div>
+
+    <div class="classify-point">
+        <h3>Ajouter un point et classifier</h3>
+        <div id="point-inputs"></div>
+        <button onclick="classifyPoint()">Classifier Point</button>
+        <div id="classification-result"></div>
+    </div>
+</div>
+
+<script>
+let currentCols = 2;
+
+function generateTable() {
+    const rows = parseInt(document.getElementById("rows").value);
+    const cols = parseInt(document.getElementById("cols").value);
+    currentCols = cols;
+    let html = "<table><tr>";
+    for (let c = 1; c <= cols; c++) {
+        html += "<th>X" + c + "</th>";
+    }
+    html += "<th><strong>Y</strong></th></tr>";
+    for (let r = 0; r < rows; r++) {
+        html += "<tr>";
+        for (let c = 0; c < cols; c++) {
+            html += `<td><input type="number" value="${r+c+1}" step="any"></td>`;
+        }
+        html += `<td><input type="number" value="${r%2}" step="any"></td>`;
+        html += "</tr>";
+    }
+    html += "</table>";
+    document.getElementById("table-container").innerHTML = html;
+    generatePointInputs();
+}
+
+function generatePointInputs() {
+    let html = "";
+    for (let i = 0; i < currentCols; i++) {
+        html += `<label>X${i+1}: <input type="number" id="pointX${i}" step="any"></label>`;
+    }
+    document.getElementById("point-inputs").innerHTML = html;
+}
+
+function calculate() {
+    const tableEl = document.querySelectorAll("#table-container table tr");
+    let table = [];
+    for (let i = 1; i < tableEl.length; i++) {
+        let row = [];
+        const inputs = tableEl[i].querySelectorAll("input");
+        inputs.forEach(input => {
+            row.push(parseFloat(input.value) || 0);
+        });
+        table.push(row);
+    }
+
+    fetch("/calculate", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({table})
+    }).then(res => res.json()).then(data => {
+        if (data.error) {
+            document.getElementById("result").innerHTML = "<b>Erreur :</b> " + data.error;
+        } else {
+            document.getElementById("result").innerHTML =
+                "<h3>Résultat :</h3><img src='" + data.image + "'>";
+        }
+    }).catch(err => {
+        document.getElementById("result").innerHTML = "<b>Erreur :</b> " + err;
+    });
+}
+
+function classifyPoint() {
+    let point = [];
+    for (let i = 0; i < currentCols; i++) {
+        point.push(parseFloat(document.getElementById(`pointX${i}`).value) || 0);
+    }
+
+    fetch("/classify", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({point})
+    }).then(res => res.json()).then(data => {
+        if (data.error) {
+            document.getElementById("classification-result").innerHTML = "<b>Erreur :</b> " + data.error;
+        } else {
+            document.getElementById("classification-result").innerHTML =
+                `<b>Classe prédite :</b> ${data.class}`;
+        }
+    }).catch(err => {
+        document.getElementById("classification-result").innerHTML = "<b>Erreur :</b> " + err;
+    });
+}
+
+window.onload = generateTable;
+</script>
+</body>
+</html>
