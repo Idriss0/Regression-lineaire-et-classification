@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Régression Linéaire Multivariable</title>
+<style>
+body {
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    background: #f8f9fa;
+    margin: 0;
+    padding: 0;
+}
+header {
+    background: #004085;
+    color: #fff;
+    padding: 20px;
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+}
+.container {
+    max-width: 1100px;
+    margin: 30px auto;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+input[type="number"] {
+    width: 70px;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: right;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 15px;
+    font-size: 16px;
+}
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+}
+th {
+    background: #e9ecef;
+}
+tr:nth-child(even) {
+    background: #f8f9fa;
+}
+button {
+    background: #004085;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background 0.3s ease;
+}
+button:hover {
+    background: #002752;
+}
+.result {
+    margin-top: 20px;
+    padding: 15px;
+    background: #e9ecef;
+    border-radius: 8px;
+    font-size: 18px;
+}
+.grid-controls {
+    margin-bottom: 20px;
+}
+h2 {
+    color: #004085;
+    font-size: 22px;
+    margin-bottom: 15px;
+}
+code {
+    background: #f1f3f5;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 18px;
+}
+@media (max-width: 768px) {
+    input[type="number"] {
+        width: 50px;
+    }
+    button {
+        width: 100%;
+    }
+}
+</style>
+</head>
+<body>
+<header>Régression Linéaire</header>
+<div class="container">
+    <h2>Régression linéaire : Méthode matricielle</h2>
+    <div class="grid-controls">
+        <label>Choisir la dimention de la table initiale de données:</label>
+        <input type="number" id="rows" value="3" min="2" style="width:60px;"> lignes
+        <input type="number" id="cols" value="3" min="2" style="width:60px;"> colonnes
+        <button onclick="generateTable()">Créer table</button>
+    </div>
+    <div id="table-container"></div>
+    <button onclick="calculate()">Calculer</button>
+    <div class="result" id="result"></div>
+</div>
+
+<script>
+function generateTable() {
+    const rows = parseInt(document.getElementById("rows").value);
+    const cols = parseInt(document.getElementById("cols").value);
+    let html = "<table><tr>";
+    for (let c = 1; c <= cols; c++) {
+        html += "<th>X" + c + "</th>";
+    }
+    html += "<th><strong>Y</strong></th></tr>";
+    for (let r = 0; r < rows; r++) {
+        html += "<tr>";
+        for (let c = 0; c < cols; c++) {
+            html += `<td><input type="number" value="${r+c+1}" step="any"></td>`;
+        }
+        html += `<td><input type="number" value="${r+cols+1}" step="any"></td>`;
+        html += "</tr>";
+    }
+    html += "</table>";
+    document.getElementById("table-container").innerHTML = html;
+}
+
+function calculate() {
+    const tableEl = document.querySelectorAll("#table-container table tr");
+    let table = [];
+    for (let i = 1; i < tableEl.length; i++) {
+        let row = [];
+        const inputs = tableEl[i].querySelectorAll("input");
+        inputs.forEach(input => {
+            row.push(parseFloat(input.value) || 0);
+        });
+        table.push(row);
+    }
+    fetch("/calculate", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({table})
+    }).then(res => res.json()).then(data => {
+        if (data.error) {
+            document.getElementById("result").innerHTML = "<b>Erreur :</b> " + data.error;
+        } else {
+            let html = "<b>Equation de régression :</b><br><code>" + data.equation + "</code>";
+            document.getElementById("result").innerHTML = html;
+        }
+    }).catch(err => {
+        document.getElementById("result").innerHTML = "<b>Erreur :</b> " + err;
+    });
+}
+
+window.onload = generateTable;
+</script>
+</body>
+</html>
